@@ -294,7 +294,10 @@ class PostsPagesTests(TestCase):
         Follow.objects.get_or_create(user=self.user, author=user_two)
         response_after_following = self.authorized_client.get(address)
         self.assertEqual(len(response_after_following.context["page_obj"]), 1)
-        self.assertIn(post_by_user_two, response_after_following.context["page_obj"])
+        self.assertIn(
+            post_by_user_two,
+            response_after_following.context["page_obj"]
+        )
 
         Follow.objects.all().delete()
         response_after_delete = self.authorized_client.get(address)
@@ -317,4 +320,7 @@ class PostsPagesTests(TestCase):
         self.authorized_client.force_login(user_three)
         response_user_three = self.authorized_client.get(address)
         self.assertEqual(len(response_user_three.context["page_obj"]), 0)
-        self.assertNotIn(post_by_user_two, response_user_three.context["page_obj"])
+        self.assertNotIn(
+            post_by_user_two,
+            response_user_three.context["page_obj"]
+        )
