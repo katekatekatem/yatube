@@ -68,7 +68,7 @@ class PostsPagesTests(TestCase):
         )
         cls.follow = (
             reverse('posts:follow_index'),
-            'posts/follow.html', 
+            'posts/follow.html',
         )
         cls.profile_follow = reverse(
             'posts:profile_follow',

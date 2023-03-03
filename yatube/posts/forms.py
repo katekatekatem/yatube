@@ -22,4 +22,4 @@ class CommentForm(forms.ModelForm):
         model = Comment
         fields = ('text',)
         # Нам здесь точно нужны labels и help_texts?
-        # Мой шаблон соответсвует шаблону из задания без них 
+        # Мой шаблон соответсвует шаблону из задания без них
