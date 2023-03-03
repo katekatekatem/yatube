@@ -77,6 +77,18 @@ class PostFormTests(TestCase):
     def test_post_edit(self):
         """При отправке формы со страницы редактирования поста
         происходит его изменение."""
+        small_gif_two = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x2c\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small2.gif',
+            content=small_gif_two,
+            content_type='image/gif',
+        )
         Post.objects.all().delete()
         new_post = Post.objects.create(
             author=self.user,
@@ -87,6 +99,7 @@ class PostFormTests(TestCase):
         form_data = {
             'text': 'Тестовый текст отредактирован',
             'group': self.group.id,
+            'image': uploaded,
         }
         response = self.authorized_client.post(
             reverse('posts:post_edit', args={new_post.id}),
@@ -105,6 +118,7 @@ class PostFormTests(TestCase):
         first = Post.objects.first()
         self.assertEqual(first.text, form_data['text'])
         self.assertEqual(first.group.id, form_data['group'])
+        self.assertEqual(first.image.name, 'posts/small2.gif')
 
     def test_create_comment(self):
         """Валидная форма создает комментарий, если пользователь
@@ -112,7 +126,6 @@ class PostFormTests(TestCase):
         comments_count = Comment.objects.count()
         form_data = {
             'text': 'Тестовый комментарий',
-            'post': self.post,
         }
         response = self.authorized_client.post(
             reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
@@ -137,7 +150,6 @@ class PostFormTests(TestCase):
         comments_count = Comment.objects.count()
         form_data = {
             'text': 'Тестовый комментарий',
-            'post': self.post,
         }
         self.client.post(
             reverse('posts:add_comment', kwargs={'post_id': self.post.id}),

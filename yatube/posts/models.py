@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models.constraints import UniqueConstraint
 
 User = get_user_model()
 
@@ -26,11 +27,11 @@ class Post(models.Model):
         blank=True,
     )
 
-    def __str__(self):
-        return self.text[:settings.POST_STR_LENGTH]
-
     class Meta:
         ordering = ['-pub_date']
+
+    def __str__(self):
+        return self.text[:settings.POST_STR_LENGTH]
 
 
 class Group(models.Model):
@@ -47,7 +48,7 @@ class Comment(models.Model):
         'Post',
         blank=True,
         null=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         related_name='comments',
     )
     author = models.ForeignKey(
@@ -58,11 +59,11 @@ class Comment(models.Model):
     text = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.text
-
     class Meta:
         ordering = ['-created']
+
+    def __str__(self):
+        return self.text
 
 
 class Follow(models.Model):
@@ -76,3 +77,9 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         related_name='following',
     )
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=['follower', 'following'],
+            name='unique_follower&following'),
+        ]

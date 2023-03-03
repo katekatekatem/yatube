@@ -29,6 +29,7 @@ class StaticURLTests(TestCase):
         cls.private_pages = {
             f'/posts/{cls.post.id}/edit/': 'posts/create_post.html',
             '/create/': 'posts/create_post.html',
+            '/follow/': 'posts/follow.html',
         }
         cls.all_pages = {**cls.public_pages, **cls.private_pages}
 

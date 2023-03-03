@@ -20,6 +20,7 @@ class PostsPagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='NoName')
+        cls.user_two = User.objects.create_user(username='User 2')
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test-slug',
@@ -67,7 +68,15 @@ class PostsPagesTests(TestCase):
         )
         cls.follow = (
             reverse('posts:follow_index'),
-            'posts/follow.html',
+            'posts/follow.html', 
+        )
+        cls.profile_follow = reverse(
+            'posts:profile_follow',
+            kwargs={'username': cls.user_two.username},
+        )
+        cls.profile_unfollow = reverse(
+            'posts:profile_unfollow',
+            kwargs={'username': cls.user_two.username}
         )
 
     @classmethod
@@ -88,6 +97,7 @@ class PostsPagesTests(TestCase):
             self.post_edit,
             self.post_detail,
             self.create,
+            self.follow,
         ):
             with self.subTest(reverse_name=reverse_name):
                 response = self.authorized_client.get(reverse_name)
@@ -134,13 +144,19 @@ class PostsPagesTests(TestCase):
 
     def test_profile_page_show_correct_context(self):
         """Шаблон profile сформирован с правильным контекстом."""
+        authorized_client = Client()
+        authorized_client.force_login(self.user_two)
+        Follow.objects.get_or_create(user=self.user_two, author=self.user)
+
         address, _ = self.profile
-        response = self.client.get(address).context
+        response = authorized_client.get(address).context
         self.context_for_check(response)
 
         user_for_check = response.get('author')
+        following_for_check = response.get('following')
         user_context = {
             user_for_check.username: self.user.username,
+            following_for_check: self.post.author.following.exists(),
         }
         for value, expected in user_context.items():
             with self.subTest(expected=expected):
@@ -149,8 +165,14 @@ class PostsPagesTests(TestCase):
     def test_post_detail_page_show_correct_context(self):
         """Шаблон post_detail сформирован с правильным контекстом."""
         address, _ = self.post_detail
-        response = self.client.get(address)
-        self.context_for_check(response.context)
+        comment = Comment.objects.create(
+            text='Тестовый комментарий',
+            post=self.post,
+            author=self.user,
+        )
+        response = self.authorized_client.get(address).context
+        self.context_for_check(response)
+        self.assertIn(comment, response['comments'])
 
     def test_post_edit_page_show_correct_context(self):
         """Шаблон post_edit сформирован с правильным контекстом."""
@@ -258,17 +280,6 @@ class PostsPagesTests(TestCase):
         ).context['page_obj']
         self.assertNotIn(post, response)
 
-    def test_comment_added_correctly(self):
-        """Комментарий при создании добавлен корректно."""
-        comment = Comment.objects.create(
-            text='Тестовый комментарий',
-            post=self.post,
-            author=self.user,
-        )
-        address, _ = self.post_detail
-        response = self.authorized_client.get(address).context['comments']
-        self.assertIn(comment, response)
-
     def test_check_cache(self):
         """Проверка кеширования главной страницы."""
         address, _ = self.index
@@ -280,47 +291,44 @@ class PostsPagesTests(TestCase):
         response_cache_deleted = self.client.get(address).content
         self.assertNotEqual(response, response_cache_deleted)
 
-    def test_add_and_delete_follow(self):
-        address, _ = self.follow
-        response = self.authorized_client.get(address)
-        self.assertEqual(len(response.context["page_obj"]), 0)
-
-        user_two = User.objects.create(username="User_2")
-        post_by_user_two = Post.objects.create(
-            author=user_two,
-            text='Тестовый пост от второго автора',
+    def test_add_follow(self):
+        """Проверка подписки на автора."""
+        self.authorized_client.get(self.profile_follow)
+        self.assertTrue(
+            Follow.objects.filter(
+                user=self.user,
+                author=self.user_two).exists()
         )
 
-        Follow.objects.get_or_create(user=self.user, author=user_two)
-        response_after_following = self.authorized_client.get(address)
-        self.assertEqual(len(response_after_following.context["page_obj"]), 1)
-        self.assertIn(
-            post_by_user_two,
-            response_after_following.context["page_obj"]
+    def test_delete_follow(self):
+        """Проверка отписки от автора."""
+        Follow.objects.create(user=self.user, author=self.user_two)
+        self.authorized_client.get(self.profile_unfollow)
+        self.assertFalse(
+            Follow.objects.filter(
+                user=self.user,
+                author=self.user_two).exists()
         )
 
-        Follow.objects.all().delete()
-        response_after_delete = self.authorized_client.get(address)
-        self.assertEqual(len(response_after_delete.context["page_obj"]), 0)
-
-    def test_new_post_is_in_for_followers_and_not_in_for_others(self):
+    def test_new_post_for_followers(self):
+        """Пост появляется на странице избранного у подписчика."""
         address, _ = self.follow
-        Post.objects.all().delete()
-        user_two = User.objects.create(username="User_2")
-        Follow.objects.get_or_create(user=self.user, author=user_two)
+        Follow.objects.get_or_create(user=self.user, author=self.user_two)
         post_by_user_two = Post.objects.create(
-            author=user_two,
+            author=self.user_two,
             text='Тестовый пост от второго автора',
         )
         response = self.authorized_client.get(address)
-        self.assertEqual(len(response.context["page_obj"]), 1)
         self.assertIn(post_by_user_two, response.context["page_obj"])
 
-        user_three = User.objects.create(username="User_3")
-        self.authorized_client.force_login(user_three)
-        response_user_three = self.authorized_client.get(address)
-        self.assertEqual(len(response_user_three.context["page_obj"]), 0)
+    def test_new_post_not_shown_for_not_followers(self):
+        address, _ = self.follow
+        post_by_user_two = Post.objects.create(
+            author=self.user_two,
+            text='Тестовый пост от второго автора',
+        )
+        response = self.authorized_client.get(address)
         self.assertNotIn(
             post_by_user_two,
-            response_user_three.context["page_obj"]
+            response.context["page_obj"]
         )
