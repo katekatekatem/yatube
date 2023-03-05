@@ -322,6 +322,7 @@ class PostsPagesTests(TestCase):
         self.assertIn(post_by_user_two, response.context["page_obj"])
 
     def test_new_post_not_shown_for_not_followers(self):
+        """Пост не появляется на странице у не подписчика."""
         address, _ = self.follow
         post_by_user_two = Post.objects.create(
             author=self.user_two,

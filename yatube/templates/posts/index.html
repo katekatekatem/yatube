@@ -2,7 +2,7 @@
 {% load cache %}
 {% block content %}
   {% include 'posts/includes/switcher.html' with index=True %}
-  {% cache 20 index_page sidebar page_obj %}
+  {% cache 20 index_page sidebar page_obj.number %}
     <h1>Последние обновления на сайте</h1>
     {% for post in page_obj %}
       {% include 'includes/article.html' %}
