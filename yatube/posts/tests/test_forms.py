@@ -26,6 +26,13 @@ class PostFormTests(TestCase):
             author=cls.user,
             text='Тестовый пост',
         )
+        cls.small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
 
     @classmethod
     def tearDownClass(cls):
@@ -38,19 +45,12 @@ class PostFormTests(TestCase):
 
     def test_create_post(self):
         """Валидная форма создает запись."""
-        posts_count = Post.objects.count()
-        small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00'
-            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
-            b'\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
-        )
         uploaded = SimpleUploadedFile(
             name='small.gif',
-            content=small_gif,
+            content=self.small_gif,
             content_type='image/gif',
         )
+        posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый текст',
             'group': self.group.id,
@@ -77,16 +77,9 @@ class PostFormTests(TestCase):
     def test_post_edit(self):
         """При отправке формы со страницы редактирования поста
         происходит его изменение."""
-        small_gif_two = (
-            b'\x47\x49\x46\x38\x39\x61\x01\x00'
-            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
-            b'\x01\x0a\x00\x01\x00\x2c\x2c\x00'
-            b'\x00\x00\x01\x00\x01\x00\x00\x02'
-            b'\x02\x4c\x01\x00\x3b'
-        )
         uploaded = SimpleUploadedFile(
             name='small2.gif',
-            content=small_gif_two,
+            content=self.small_gif,
             content_type='image/gif',
         )
         Post.objects.all().delete()

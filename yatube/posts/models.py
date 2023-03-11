@@ -22,7 +22,7 @@ class Post(models.Model):
         related_name='posts',
     )
     image = models.ImageField(
-        'Картинка',
+        'Image',
         upload_to='posts/',
         blank=True,
     )
